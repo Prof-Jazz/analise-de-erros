@@ -53,6 +53,22 @@
 .novo{background:var(--surface-2);border-left:4px solid var(--azul);padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:10px;font-size:.92rem}
 .btn:disabled{opacity:.6;cursor:wait}
 @media (max-width:420px){.pinrow{grid-template-columns:1fr 110px}}
+.hbars{display:flex;flex-direction:column;gap:14px}
+.hb-top{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;font-size:.92rem;margin-bottom:6px}
+.hb-n{color:var(--ink-2);font-size:.85rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hb-tr{display:flex;align-items:center;gap:8px;height:30px;background:var(--surface-2);border-radius:8px;overflow:hidden}
+.hb-fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;border-radius:8px;flex:none;min-width:0}
+.lbl{font-size:.86rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1}
+.lbl-out{font-size:.86rem;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.drows{display:flex;flex-direction:column;gap:14px}
+.drow-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.92rem;margin-bottom:6px}
+.drow-n{color:var(--ink-2);font-size:.82rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dtr{height:26px;display:flex;border-radius:7px;overflow:hidden;gap:2px;background:var(--surface)}
+.seg{height:100%;display:flex;align-items:center;justify-content:center;min-width:0;overflow:hidden}
+.keys{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:16px;font-size:.8rem;color:var(--ink-2)}
+.keys span{display:inline-flex;align-items:center;gap:6px}
+.keys .sw{width:11px;height:11px;border-radius:3px}
+
 
 html,body{background:var(--bg)}
 body{margin:0;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
@@ -417,6 +433,7 @@ function show(p){
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.p===p));
   ["reg","pain","hist"].forEach(k=>$("#p-"+k).hidden=!ident||k!==p);
   try{sessionStorage.setItem(KEY+"-tab",p)}catch(e){}
+  if(p==="pain")requestAnimationFrame(fitLabels);
 }
 
 /* ---------- painel ---------- */
@@ -426,6 +443,16 @@ function donut(counts,total){
   const segs=counts.map((n,i)=>{if(!n)return"";const len=n/total*C;const s=`<circle r="${R}" cx="75" cy="75" fill="none" stroke="${TIPOS[i].c}" stroke-width="26" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 75 75)"/>`;off+=len;return s;}).join("");
   return `<svg viewBox="0 0 150 150" role="img" aria-label="Distribuição dos tipos de erro"><circle r="${R}" cx="75" cy="75" fill="none" stroke="var(--surface-2)" stroke-width="26"/>${segs}<text x="75" y="76" text-anchor="middle" font-family="Archivo, Arial Black, sans-serif" font-weight="900" font-size="30" fill="var(--ink)">${total}</text><text x="75" y="96" text-anchor="middle" font-size="11" fill="var(--ink-2)" font-family="Figtree, sans-serif">erros</text></svg>`;
 }
+const pc=v=>{const r=Math.round(v);return (r===0&&v>0?"<1":r)+"%";};
+function fitLabels(){
+  document.querySelectorAll("#painBody [data-fit]").forEach(seg=>{
+    const l=seg.querySelector(".lbl");if(!l)return;
+    const out=seg.parentElement.querySelector(".lbl-out");
+    l.hidden=false;const fits=seg.clientWidth>0&&l.offsetWidth+12<=seg.clientWidth;
+    l.hidden=!fits;if(out)out.hidden=fits;
+  });
+}
+window.addEventListener("resize",()=>requestAnimationFrame(fitLabels));
 function renderPainel(){
   const fs=$("#fSim"),cur=fs.value;
   fs.innerHTML=`<option value="">Todos os simulados</option>`+sims().map(s=>`<option ${s===cur?"selected":""}>${esc(s)}</option>`).join("");
@@ -449,14 +476,19 @@ function renderPainel(){
       <h2 style="margin-top:6px">${T.id} · ${pct(byT[top])} dos erros</h2>
       <p>${T.dica}</p>
     </div>
-    <div class="card"><h3 style="margin-bottom:12px">Tipos de erro</h3>
-      <div class="donut">${donut(byT,total)}
-        <div class="legend">${TIPOS.map((t,i)=>`<div class="it"><span class="sw" style="background:${t.c}"></span><span>${t.id}</span><span class="n">${byT[i]} <small>${pct(byT[i])}</small></span></div>`).join("")}</div>
-      </div>
+    <div class="card"><h3 style="margin-bottom:14px">Tipos de erro</h3>
+      <div class="hbars">${TIPOS.map((t,i)=>{const p=byT[i]/total*100;return `<div class="hb">
+        <div class="hb-top"><span class="sw" style="background:${t.c}"></span><span>${t.id}</span><span class="hb-n">${byT[i]} ${byT[i]===1?"erro":"erros"}</span></div>
+        <div class="hb-tr"><span class="hb-fill" data-fit style="width:${p?Math.max(p,1.5):0}%;background:${t.c};color:${t.ci}"><b class="lbl">${pc(p)}</b></span><b class="lbl-out" hidden>${pc(p)}</b></div>
+      </div>`}).join("")}</div>
     </div>
-    <div class="card"><h3 style="margin-bottom:12px">Erros por disciplina</h3>
-      <div class="bars">${byD.map(x=>`<div class="bar"><span class="nm" title="${x.d}">${x.d}</span><span class="tr" style="width:${Math.max(x.n/max*100,4)}%">${x.t.map((n,i)=>n?`<span style="width:${n/x.n*100}%;background:${TIPOS[i].c}" title="${TIPOS[i].id}: ${n}"></span>`:"").join("")}</span><span class="n">${x.n}</span></div>`).join("")}</div>
-      <p class="muted" style="margin:10px 0 0">As cores de cada barra mostram os tipos de erro naquela disciplina.</p>
+    <div class="card"><h3 style="margin-bottom:6px">Erros por disciplina</h3>
+      <p class="muted" style="margin:0 0 14px">O tamanho da barra mostra quantos erros você teve na disciplina. As porcentagens dentro dela mostram como esses erros se dividem entre os tipos.</p>
+      <div class="drows">${byD.map(x=>`<div class="drow">
+        <div class="drow-top"><b>${x.d}</b><span class="drow-n">${x.n} ${x.n===1?"erro":"erros"} · ${pc(x.n/total*100)} do total</span></div>
+        <div class="dtr" style="width:${Math.max(x.n/max*100,6)}%">${x.t.map((n,i)=>n?`<span class="seg" data-fit title="${TIPOS[i].id}: ${n} (${pc(n/x.n*100)})" style="flex:${n};background:${TIPOS[i].c};color:${TIPOS[i].ci}"><b class="lbl">${pc(n/x.n*100)}</b></span>`:"").join("")}</div>
+      </div>`).join("")}</div>
+      <div class="keys">${TIPOS.map(t=>`<span><i class="sw" style="background:${t.c}"></i>${t.id}</span>`).join("")}</div>
     </div>
     <div class="card"><h3 style="margin-bottom:8px">Disciplina × tipo de erro</h3>
       <div class="scroll"><table>
@@ -465,6 +497,7 @@ function renderPainel(){
       </table></div>
     </div>
   </div>`;
+  requestAnimationFrame(fitLabels);
 }
 
 /* ---------- histórico ---------- */
