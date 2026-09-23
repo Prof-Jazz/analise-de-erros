@@ -304,6 +304,8 @@ footer{font-size:.78rem;color:var(--ink-2);text-align:center}
 (function(){
 const API="https://script.google.com/macros/s/AKfycbyjmG2UtMVxs3s6cgHRl0CQ1h6TTwGTHBgBcakJCVIGE9smWcGacDbL96bTAgyUHD79UQ/exec";
 const KEY="jazz-analise-erros-v1", KEY_ID="jazz-analise-erros-id";
+const DEMO=location.hash==="#demo";
+window.addEventListener("hashchange",()=>location.reload());
 const TIPOS=[
  {id:"Lacuna Teórica",c:"var(--t1)",ci:"var(--t1-ink)",d:"Não sabia o conteúdo necessário.",
   dica:"Volte à teoria do assunto, refaça a questão sem olhar a resolução e depois resolva outras parecidas do mesmo conteúdo."},
@@ -336,8 +338,8 @@ function load(){
   }catch(e){}
   try{ident=JSON.parse(localStorage.getItem(KEY_ID)||"null");}catch(e){}
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify({items:all,demo}));}catch(e){toast("Não consegui salvar neste navegador.");}}
-function saveId(){try{ident?localStorage.setItem(KEY_ID,JSON.stringify(ident)):localStorage.removeItem(KEY_ID);}catch(e){}}
+function save(){if(DEMO)return;try{localStorage.setItem(KEY,JSON.stringify({items:all,demo}));}catch(e){toast("Não consegui salvar neste navegador.");}}
+function saveId(){if(DEMO)return;try{ident?localStorage.setItem(KEY_ID,JSON.stringify(ident)):localStorage.removeItem(KEY_ID);}catch(e){}}
 let tt;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2800);}
 
 /* ---------- servidor ---------- */
@@ -355,7 +357,7 @@ function status(kind,msg){const s=$("#sync");s.dataset.k=kind;s.textContent=msg;
 let syncing=false, again=false, timer;
 function syncSoon(){clearTimeout(timer);timer=setTimeout(sync,700);}
 async function sync(){
-  if(!ident||demo)return;
+  if(!ident||demo||DEMO)return;
   if(syncing){again=true;return;}
   syncing=true;status("busy","Sincronizando…");
   try{
@@ -402,6 +404,7 @@ async function entrar(cred,novo){
 $("#bSair").onclick=()=>$("#sairConfirm").hidden=false;
 $("#sNo").onclick=()=>$("#sairConfirm").hidden=true;
 $("#sYes").onclick=async()=>{
+  if(DEMO){location.replace(location.pathname);return;}
   await sync();
   ident=null;saveId();all=[];demo=false;save();$("#sairConfirm").hidden=true;renderAll();
   toast("Você saiu. Seus registros continuam salvos com o professor.");
@@ -571,8 +574,12 @@ function renderAll(){
   renderPainel();renderHist();
   if(!logged)["reg","pain","hist"].forEach(k=>$("#p-"+k).hidden=true);
 }
-load();renderAll();
-if(ident){
+load();
+if(DEMO){
+  ident={nome:"Professor Jazz",turma:"demonstração",pin:""};loadDemo();
+  status("ok","Modo demonstração — dados de exemplo, nada é salvo");
+}else{renderAll();}
+if(ident&&!DEMO){
   let tab="reg";try{tab=sessionStorage.getItem(KEY+"-tab")||"reg"}catch(e){}
   show(data().length?tab:"reg");status("busy","Sincronizando…");sync();
 }
